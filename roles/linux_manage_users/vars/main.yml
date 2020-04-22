@@ -1,0 +1,54 @@
+---
+csv_delimiter: ';'
+# contents: "{{ lookup('file', './files/' + userfile ) }}"
+# lines: "{{ contents.split('\n') }}"
+
+local_users_default:
+  "ansible":
+    ssh_key: "{{ vault_path }}/awx.pub"
+    groups:
+      - automation
+      - users
+
+  "gitlab":
+    ssh_key: "{{ vault_path }}/gitlab.pub"
+    groups:
+      - automation
+      - users
+
+  "jan.snobl":
+      ssh_key: "{{ vault_path }}/motv_jan_snobl.pub"
+      groups:
+        - users
+        - operations
+  "lukas.hampeis":
+    ssh_key: "{{ vault_path }}/lukas_hampeis.pub"
+    groups:
+      - users
+      - operations
+  "martin.vaner":
+    ssh_key: "{{ vault_path }}/martin_vaner.pub"
+    groups:
+      - users
+      - operations
+
+  "ariana.moreno":
+    ssh_key: "{{ vault_path }}/ariana.pub"
+    groups:
+      - users
+      - operations
+
+local_groups_default:
+  "operations":
+    acl:
+      - "ALL=(ALL) NOPASSWD: ALL"
+
+  "automation":
+    acl:
+      - "ALL=(ALL) NOPASSWD: ALL"
+
+#--
+  # "development":
+  #   acl:
+  #     - "ALL=(ALL) NOPASSWD: ALL"
+#---

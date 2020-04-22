@@ -1,0 +1,6 @@
+- hosts: "all"
+  gather_facts: false
+  become: yes
+  become_method: su
+  roles:
+    - linux_manage_users

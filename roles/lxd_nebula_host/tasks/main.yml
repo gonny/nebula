@@ -1,0 +1,96 @@
+- name: Install packages
+  apt:
+    name:
+      - gnupg
+      - ca-certificates
+      - iptables-persistent
+      - bridge-utils
+      - apt-transport-https
+      - curl
+      - netfilter-persistent
+    # - augeas-tools
+    state: present
+
+# - name: Add repo key
+#   shell: "apt-key adv --fetch-keys https://downloads.opennebula.io/repo/repo.key"
+#   become: yes
+
+- name: Add repo key
+  apt_key:
+    url: https://downloads.opennebula.io/repo/repo.key
+    state: present
+
+- name: Add repository
+  apt_repository:
+    repo: deb https://downloads.opennebula.org/repo/5.10/Ubuntu/19.10 stable opennebula
+    state: present
+
+- name: Update all
+  apt:
+    name: "*"
+    state: latest
+    update_cache: yes
+
+- name: install LXD node
+  apt:
+    name: opennebula-node-lxd
+    state: latest
+
+# - name: install KVM node
+#   apt:
+#     name: opennebula-node
+#     state: latest
+
+# - name: Enable kvm service
+#   systemd:
+#     name: libvirtd
+#     state: started
+#     enabled: yes
+
+- name: Get master SSH key
+  shell: cat /var/lib/one/.ssh/id_rsa.pub
+  register: onekey
+  delegate_to: nebula_gui
+
+- name: Insert master key to authorized
+  lineinfile:
+    path: "/var/lib/one/.ssh/authorized_keys"
+    line: "{{ onekey.stdout }}"
+    create: yes
+    state: present
+    mode: 0600
+    backup: yes
+    insertafter: EOF
+    owner: oneadmin
+    group: oneadmin
+
+- name: Get machine key
+  shell: cat /etc/ssh/ssh_host_ecdsa_key.pub
+  register: machine_key
+
+# - name: Send machine key to master
+#   known_hosts:
+#     name: "{{ ansible_host }}"
+#     key: "{{ machine_key.stdout }}"
+#   become_user: oneadmin
+
+- name: Send machine key to master
+  lineinfile:
+    path: "/var/lib/one/.ssh/known_hosts"
+    line: "{{ ansible_host}} {{ machine_key.stdout }}"
+    create: yes
+    state: present
+    mode: 0600
+    backup: yes
+    insertafter: EOF
+    owner: oneadmin
+    group: oneadmin
+  delegate_to: nebula_gui
+#  become_user: oneadmin
+
+#update lxd to the latest - sudo snap refresh --channel=latest lxd
+# /etc/sysctl.conf
+# https://www.techrepublic.com/article/how-to-disable-ipv6-on-linux/
+# net.ipv6.conf.all.disable_ipv6 = 1
+# net.ipv6.conf.default.disable_ipv6 = 1
+# net.ipv6.conf.lo.disable_ipv6 = 1

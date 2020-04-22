@@ -1,0 +1,17 @@
+# define sudoers
+vault_path: "./vault"
+cmd_aliases_enable: "Cmnd_Alias ENABLE = /usr/bin/up2date"
+contents: "{{ lookup('file', userfile ) }}"
+lines: "{{ contents.split('\n') }}"
+clean_sudoers: false
+disallow_root: true
+default_shell: "/bin/bash"
+# // always / on_create
+linux_user_update_password: on_create
+
+
+local_users_custom: []
+local_groups_custom: []
+
+local_groups: "{{  local_groups_default | combine ( local_groups_custom ) | default([]) }}"
+local_users: "{{ local_users_default |combine ( local_users_custom ) | default([]) }}"

@@ -1,0 +1,101 @@
+# manage user account linux from CSV format
+- name: Make sure we have a "{{ grp }}" group
+  group:
+    name: "{{ grp }}"
+    state: present
+  tags: manage_users
+
+- debug: msg="Iterating over CSV lines = {{ item.split(";")[3] | trim }}"
+  connection: local
+  when: item.split(";")[3]|trim != ""
+  with_items:
+    - "{{ lines }}"
+  tags: manage_users
+
+
+- name: Process user
+  user: >
+    name="{{ item.split(";")[3] | trim }}"
+    group="{{ usr | default("users") }}"
+    groups="{{ grp }}"
+    state=present
+    append=yes
+  when: item.split(";")[3]|trim != ""
+  with_items:
+    - "{{ lines }}"
+  tags: manage_users
+
+- name: Set up authorized keys for the deployer user
+  authorized_key:
+    user: "{{ item.split(';')[3] | trim }}"
+    key: "{{ item.split(';')[4] | trim }}"
+  when: item.split(';')[4]|trim != ""
+  with_items:
+  - "{{ lines }}"
+  tags: manage_users
+
+###   SUDOERS
+# - name: Cleaning sudoers , load default sudoers
+#   copy:
+#     src: "{{ role_path }}/files/sudoers"
+#     dest: /etc/sudoers
+#     backup: yes
+#   tags: manage_users_sudo
+
+- name: Autologon activated
+  copy:
+    src: "{{ role_path }}/files/autologon.sh"
+    dest: /etc/profile.d
+    backup: yes
+  become: yes
+  tags:
+    - manage_users_sudo
+    - csv_add_user
+
+- name: Cleaning sudoers , load default sudoers
+  copy:
+    src: "{{ role_path }}/files/sudoers"
+    dest: /etc/sudoers
+    backup: yes
+  when: clean is defined
+  tags:
+    - manage_users_sudo
+    - cleaning_sudoers
+
+# - name: Configure Cmnd_Aliases to SUDOERS
+#   blockinfile:
+#     path: /etc/sudoers
+#     state: present
+#     marker: "## {mark} - Configuration - Cmnd_Aliases "
+#     marker_begin: "BEGIN - ADDED WITH ANSIBLE"
+#     marker_end: "END - ADDED WITH ANSIBLE"
+#     block: |
+#       # Cmnd_Aliases configure in ./defaults/main.yml
+#         {{ cmd_aliases_enable }}
+#     validate: 'visudo -cf %s'
+#   tags: manage_users_sudo
+
+- name: Ansible create file if it doesn't exist
+  file:
+    path: /etc/sudoers.d/{{ grp }}
+    state: touch
+    mode: 0600
+    owner: root
+  tags: manage_users_sudo
+
+- name: Configure sudoers - {{ item }} group
+  blockinfile:
+    path: /etc/sudoers.d/{{ grp }}
+    state: present
+    marker: "## {mark} - Set for groups"
+    marker_begin: "BEGIN - ADDED WITH ANSIBLE"
+    marker_end: "END - ADDED WITH ANSIBLE"
+    block: |
+      # For {{ grp }} group , allow_user is defined ./defaults/main.yml
+        %{{ grp }} ALL=(ALL) NOPASSWD: ALL
+        #%{{ grp }} ALL=(ALL)  NOPASSWD:ENABLE
+        #%{{ grp }} ALL =({{ allow_user }})  NOPASSWD:/bin/bash
+    backup: yes
+    validate: 'visudo -cf %s'
+  become: yes
+  tags: manage_users_sudo

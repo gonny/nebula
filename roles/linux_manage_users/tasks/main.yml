@@ -1,0 +1,236 @@
+- name: Install sudo as an prerequisity
+  package:
+    name: sudo
+    state: present
+
+- name: Make sure we have a local groups for users
+  group:
+    name: "{{ item.key }}"
+    state: present
+  with_dict:
+    - "{{ local_groups }}"
+  become: yes
+  tags: add_users
+
+- name: Add Unix users
+  user:
+    name: "{{ item.key }}"
+    groups: "{{ ( item.value.groups ) | default ( omit ) }}"
+    password: "{{ (item.password | default(omit))| password_hash('sha512') }}"
+    shell: "{{ item.shell | default( default_shell ) }}"
+    update_password: "{{ linux_user_update_password }}"
+  with_dict: "{{ local_users }}"
+  become: yes
+  tags: add_users
+
+- name: Check users password valid time
+  shell: |
+    getent shadow "{{ item.key }}" | cut -d':' -f5
+  register: users_pw_valid
+  loop: "{{ lookup('dict', local_users) }}"
+  changed_when: false
+  become: yes
+  tags: add_users
+
+- debug:
+    msg: "{{ local_users[item.item.key].user_password_valid_time == item.stdout }}"
+  when: local_users[item.item.key].user_password_valid_time is defined
+  with_items: "{{ users_pw_valid.results }}"
+  tags: add_users
+
+- name: Set users password valid time
+  shell: chage -M "{{ local_users[item.item.key].user_password_valid_time }}" "{{ item.item.key }}"
+  when: local_users[item.item.key].user_password_valid_time is defined
+  become: yes
+  with_items: "{{ users_pw_valid.results }}"
+  tags: add_users
+
+- name: Set up authorized key for users
+  authorized_key:
+    user: "{{ item.key }}"
+    key: "{{ lookup('file', role_path +'/../../' + item.value.ssh_key ) }}"
+  when: item.value.ssh_key is defined
+  with_dict:
+    - "{{ local_users }}"
+  become: yes
+  tags: add_users
+
+##------------------------------------------------------------------------------
+
+# - name: Determine existing users
+#   shell: 'grep testing /etc/group | cut -d: -f4 | tr "," "\n"'
+#   changed_when: false
+#   register: existing_users
+#   tags: del_users
+#
+# - debug:
+#     var: existing_users
+#   tags:
+#     - del_users
+#
+# - name: (storage) convert lists to structures 01
+#   set_fact:
+#     #fsinfo_by_dev: "{{ fsinfo_by_dev | default([]) + [ item.1 : [item.0.name] ]  }}"
+#     #fsinfo_by_dev: "{{ fsinfo_by_dev | default({}) | combine ({item.1 : 'aaa'}) }}"
+#     fsinfo_by_dev: "{{ item.0.name | makedict (item.1 )}}"
+#
+#   with_subelements:
+#     - "{{ local_users }}"
+#     - groups
+#   tags:
+#     - del_users
+#
+# - debug:
+#     var: fsinfo_by_dev
+#   tags:
+#     - del_users
+#
+# - name: Determine removed users
+#   set_fact:
+#     removed_users: "{{ existing_users.stdout_lines | difference(list) }}"
+#   tags: del_users
+#
+# - name: Delete removed user accounts
+#   user:
+#     name: "{{ item }}"
+#     state: absent
+#   with_items: "{{ removed_users }}"
+#   tags: del_users
+
+##------------------------------------------------------------------------------
+
+# manage user account linux from CSV format
+- name: CSV Make sure we have a group
+  group:
+    name: "{{ cvs_grp }}"
+    state: present
+  become: yes
+  when: (userfile is defined and userfile != "" ) and ( cvs_grp is defined and cvs_grp !="" )
+  #msg: Patrne jsi nezdal nazev.csv
+  tags: csv_add_user
+
+# - debug:
+#     var: lines
+#   tags: csv_add_user
+
+- debug:
+    msg: 'Iterating over CSV lines = {{ item.split(";")[3] | trim }}'
+  connection: local
+  with_items:
+    - "{{ lines }}"
+  when: ( (userfile is defined and userfile != "" ) and ( cvs_grp is defined and cvs_grp !="" ) )
+    and item.split(";")[3]|trim != ""
+  tags: csv_add_user
+
+- name: CSV Process user
+  user: >
+    name="{{ item.split(";")[3] | trim }}"
+    group="{{ usr | default("users") }}"
+    groups="{{ cvs_grp }}"
+    state=present
+    append=yes
+  when: ( (userfile is defined and userfile != "" ) and ( cvs_grp is defined and cvs_grp !="" )) and
+    item.split(";")[3]|trim != ""
+  with_items:
+    - "{{ lines }}"
+  become: yes
+  tags: csv_add_user
+
+- name: CSV Set up authorized keys for the deployer user
+  authorized_key:
+    user: "{{ item.split(';')[3] | trim }}"
+    key: "{{ item.split(';')[4] | trim }}"
+  when: ( (userfile is defined and userfile != "" ) and ( cvs_grp is defined and cvs_grp !="" )) and
+    item.split(';')[4]|trim != ""
+  with_items:
+  - "{{ lines }}"
+  become: yes
+  tags: csv_add_user
+
+## -----------------------------------------------------------------------------
+## Nastaveni autologon
+- name: Autologout activated
+  copy:
+    src: "{{ role_path }}/files/autologout.sh"
+    dest: /etc/profile.d/autologout.sh
+    backup: yes
+    mode: '771'
+  become: yes
+  tags:
+    - manage_users_sudo
+    - csv_add_user
+    - autologout
+
+###   SUDOERS
+- name: Cleaning sudoers , load default sudoers
+  copy:
+    src: "{{ role_path }}/files/sudoers"
+    dest: /etc/sudoers
+    backup: yes
+  become: yes
+  when: clean_sudoers
+  tags:
+    - manage_users_sudo
+    - csv_add_user
+
+## ---------------------------------------------------------------
+- name: Create sudoers group file
+  file:
+    path: /etc/sudoers.d/{{ item.key }}
+    state: touch
+    mode: 0600
+    owner: root
+  with_dict:
+    - "{{ local_groups }}"
+  become: yes
+  when: item.value.acl is defined
+  tags:
+    - manage_users_sudo
+    - csv_add_user
+
+- name: Fill sudoers file with group configuration
+  blockinfile:
+    path: /etc/sudoers.d/{{ item.key }}
+    state: present
+    marker: "# {mark} Operations sudo block"
+    block: |
+      %{{ item.key }} {{ item.value.acl | join ('
+      %'+item.key+' ') }}
+    backup: yes
+    validate: '/usr/sbin/visudo -cf %s'
+  become: yes
+  with_dict:
+    - "{{ local_groups }}"
+  when: item.value.acl is defined
+  tags:
+    - manage_users_sudo
+    - csv_add_user
+  notify: restart sshd
+
+## ---------------------------------------------------------------------------
+- name: Disallow root SSH access
+  blockinfile:
+    path: /etc/ssh/sshd_config
+    marker: "# {mark} configuration for operations group "
+    block: |
+      Match User ansible
+        PasswordAuthentication no
+      Match User root
+        PasswordAuthentication no
+        PermitRootLogin {{ permit_root | default('no') }}
+  become: yes
+  when: disallow_root
+  tags: disallow_root
+  notify: restart sshd
+
+# - name: Removing all the authorized keys already set
+#   authorized_key:
+#     user: root
+#     key: '{{ item }}'
+#     state: absent
+#     exclusive: True
+#   with_file:
+#     - "{{ role_path}}/../../{{ vault_path }}/unicorn_root.pub"
+#   become: yes
+#   when: disallow_root
+#   tags: disallow_root

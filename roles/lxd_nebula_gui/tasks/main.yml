@@ -1,0 +1,64 @@
+- name: Install packages
+  apt:
+    name:
+      - gnupg
+      - ca-certificates
+      - dnsmasq
+    # bridge interface
+    state: present
+
+# - name: Add repo key
+#   shell: "apt-key adv --fetch-keys https://downloads.opennebula.org/repo/repo.key"
+#   become: yes
+
+- name: Add repo key
+  apt_key:
+    url: https://downloads.opennebula.io/repo/repo.key
+    state: present
+
+- name: Add repository
+  apt_repository:
+    repo: deb https://downloads.opennebula.org/repo/5.10/Ubuntu/19.10 stable opennebula
+    state: present
+    update_cache: no
+
+- name: Update all
+  apt:
+    name: "*"
+    state: latest
+    update_cache: yes
+  async: 300
+  poll: 0
+  register: apt_sleeper
+
+- name: Wait for asynchronous job to end
+  async_status:
+    jid: '{{ apt_sleeper.ansible_job_id }}'
+  register: job_result
+  until: job_result.finished
+  retries: 30
+
+- name: Install frontend
+  apt:
+    name:
+     - opennebula
+     - opennebula-sunstone
+     - opennebula-gate
+     - opennebula-flow
+
+- name: Create login password
+  shell: echo 'oneadmin:Heslo123!!' > ~/.one/one_auth
+  become_user: oneadmin
+
+- name: start services
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop:
+    - opennebula
+    - opennebula-flow
+    - opennebula-sunstone
+
+#- name: Download router image
+#  shell: "onemarketapp export 'alpine-vrouter (KVM)' vrouter_alpine --datastore default --vmname vrouter_alpine"
