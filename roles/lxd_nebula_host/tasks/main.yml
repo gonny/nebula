@@ -1,3 +1,8 @@
+- name: Gather distribution facts
+  setup:
+    gather_subset:
+      - virtual
+      
 - name: Install packages
   apt:
     name:
@@ -22,7 +27,7 @@
 
 - name: Add repository
   apt_repository:
-    repo: deb https://downloads.opennebula.org/repo/5.10/Ubuntu/19.10 stable opennebula
+    repo: "deb https://downloads.opennebula.org/repo/5.10/{{ ansible_distribution }}/{{ ansible_distribution_version }} stable opennebula"
     state: present
 
 - name: Update all
