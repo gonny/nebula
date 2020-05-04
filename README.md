@@ -28,6 +28,13 @@ As much as possible work must be done from remote server with minimal human inte
 * [read-write storage](https://www.cyberciti.biz/faq/how-to-add-or-mount-directory-in-lxd-linux-container/)
 * [LXD and cloud-init](https://linuxcontainers.org/lxd/docs/master/cloud-init)
 * [LXD/LXC instance and profile configuration](https://github.com/lxc/lxd/blob/master/doc/instances.md)
+* [Systemd interface custom DNS](https://blog.simos.info/how-to-use-lxd-container-hostnames-on-the-host-in-ubuntu-18-04/)
+* [LXD config settings](https://github.com/lxc/lxd/blob/master/doc/instances.md#type-unix-block)
+
+# LXD lxc_custom_configuration
+## What to test
+* VLAN communication
+* Resource limitation
 
 # ~~nebula~~
 ~~OpenNebula deployment inside internal environment~~

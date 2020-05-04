@@ -1,0 +1,15 @@
+- name: Download image and set attributes
+	shell: "lxc copy {{ lxd_image }} local: --auto-update={{ lxd_image_autoupdate }} {{ '--alias='+ lxd_image_alias if lxd_image_alias is defined else None }}"
+
+- name: Create container for lxdMosaic
+	shell: "lxc launch {{ lxd_image }} {{ lxd_hostname }}"
+	async: 60
+	poll: 0
+	register: response
+
+- name: 'Wait for container create'
+  async_status:
+    jid: "{{ response.ansible_job_id }}"
+  register: job_result
+  until: job_result.finished
+  retries: 10

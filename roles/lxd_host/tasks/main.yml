@@ -14,17 +14,42 @@
 - name: Add ubuntu Minimal LXD repository with cloud-init enabled
 	shell: "lxc remote add --protocol simplestreams ubuntu-minimal https://cloud-images.ubuntu.com/minimal/releases/"
 
-	lxc launch ubuntu-minimal:focal
-lxc launch images:alpine/3.11 alpine
+- name: Create container for lxdMosaic
+	import_role:
+		name: lxd_container_create
+	vars:
+		lxd_image: ubuntu-minimal:bionic
+		lxd_image_autoupdate: true
+		lxd_hostname: lxdMosaic
 
-Profile remap user
-  raw.idmap: |
-    uid $_UID 1000
-    gid $GID 1000
+- name: Download installation source of mosaic into container
+	command: lxc exec lxdMosaic -- /bin/bash -c "curl -s https://raw.githubusercontent.com/turtle0x1/LxdMosaic/master/examples/install_with_clone.sh >> installLxdMosaic.sh && chmod +x installLxdMosaic.sh"
+	become: yes
 
-adduser -u 1000 -s /bin/ash -h /home/domains/motvmw www-data
+- name: Install LXD mosaic
+	command: lxc exec lxdMosaic -t -- /root/installLxdMosaic.sh
+	register: output
 
-remap user (https://gist.github.com/bloodearnest/ebf044476e70c4baee59c5000a10f4c8)
+- debug:
+		var: output
 
+- name: Open lxdMosaic to public IP
+	command: lxc config device add lxdMosaic  www proxy listen=tcp:0.0.0.0:8080 connect=tcp:127.0.0.1:443
+
+- name: Open lxdMosaic to public IP
+	command: lxc config device add lxdMosaic www-api proxy listen=tcp:0.0.0.0:30000 connect=tcp:127.0.0.1:3000
+
+#sudo lxc image copy  images:alpine/3.11 local: --alias alpine
+#lxc launch ubuntu-minimal:focal
+
+# Profile remap user
+#   raw.idmap: |
+#     uid $_UID 1000
+#     gid $GID 1000
+#
+# adduser -u 1000 -s /bin/ash -h /home/domains/motvmw www-data
+#
+# remap user (https://gist.github.com/bloodearnest/ebf044476e70c4baee59c5000a10f4c8)
+#
 
 #lxc config device add lxdMosaic web proxy listen=tcp:0.0.0.0:443 connect=tcp:127.0.0.1:443
