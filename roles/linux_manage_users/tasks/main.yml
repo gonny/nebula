@@ -208,13 +208,31 @@
   notify: restart sshd
 
 ## ---------------------------------------------------------------------------
+- name: Disable PasswordAuthentication
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^PasswordAuthentication"
+    line: PasswordAuthentication no
+    state: present
+  become: yes
+  when: disallow_root
+  tags: disallow_root
+  notify: restart sshd
+
+- name: Disable root login
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^PermitRootLogin"
+    state: absent
+  become: yes
+  when: disallow_root
+  tags: disallow_root
+  notify: restart sshd
+
 - name: Disallow root SSH access
   blockinfile:
     path: /etc/ssh/sshd_config
-    marker: "# {mark} configuration for operations group "
     block: |
-      Match User ansible
-        PasswordAuthentication no
       Match User root
         PasswordAuthentication no
         PermitRootLogin {{ permit_root | default('no') }}

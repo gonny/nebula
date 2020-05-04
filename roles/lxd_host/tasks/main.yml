@@ -1,0 +1,30 @@
+- name: Install necessary packages
+	apt:
+		name:
+			- zfsutils-linux
+
+- name: Create zpool as container storage
+	shell: "zpool create -f -o failmode=continue -o ashift=12 {{ zpool_name }} {{ zpool_block_device | join (' ')}}"
+	become: yes
+
+- name: Init lxd
+	shell: "lxd init --preseed {{ lookup ('template', 'lxd_preseed.j2')}}"
+	become: yes
+
+- name: Add ubuntu Minimal LXD repository with cloud-init enabled
+	shell: "lxc remote add --protocol simplestreams ubuntu-minimal https://cloud-images.ubuntu.com/minimal/releases/"
+
+	lxc launch ubuntu-minimal:focal
+lxc launch images:alpine/3.11 alpine
+
+Profile remap user
+  raw.idmap: |
+    uid $_UID 1000
+    gid $GID 1000
+
+adduser -u 1000 -s /bin/ash -h /home/domains/motvmw www-data
+
+remap user (https://gist.github.com/bloodearnest/ebf044476e70c4baee59c5000a10f4c8)
+
+
+#lxc config device add lxdMosaic web proxy listen=tcp:0.0.0.0:443 connect=tcp:127.0.0.1:443

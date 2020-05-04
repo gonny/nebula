@@ -1,0 +1,31 @@
+config:
+  core.https_address: '[::]:8443'
+  core.trust_password: password
+networks:
+- config:
+    ipv4.address: {{ lxc_network }}
+    ipv4.nat: "true"
+  description: "Default container netwok"
+  name: lxdbr0
+  type: bridge
+storage_pools:
+- config:
+    source: lxd-local
+    volatile.initial_source: /dev/sdb
+    zfs.pool_name: {{ zpool_name }}
+  description: ""
+  name: {{ zpool_name }}
+  driver: zfs
+profiles:
+- config: {}
+  description: Default LXD profile
+  devices:
+    eth0:
+      name: eth0
+      network: lxdbr0
+      type: nic
+    root:
+      path: /
+      pool: {{ zpool_name }}
+      type: disk
+  name: default

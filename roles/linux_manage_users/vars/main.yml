@@ -1,4 +1,3 @@
----
 csv_delimiter: ';'
 # contents: "{{ lookup('file', './files/' + userfile ) }}"
 # lines: "{{ contents.split('\n') }}"
