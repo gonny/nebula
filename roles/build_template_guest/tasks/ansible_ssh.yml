@@ -1,0 +1,50 @@
+- name: Install sudo and ssh server
+  shell: "lxc exec {{ lxd_hostname }} -- /bin/sh -c \"apk add openssh-server sudo python3 && service sshd start\""
+  delegate_to: "{{ pve_primary_host_ip }}"
+  register: output
+  changed_when: "not 'sshd has already been started' in output.stderr"
+  become: yes
+  tags:
+    - ansible_ssh
+
+- name: Add Ansible user and group
+  shell: "lxc exec {{ lxd_hostname }} -- /bin/sh -c \"addgroup -S -g 8000 ansible \
+    && adduser -u 8000 -s /bin/sh -G ansible -D -h /home/ansible ansible \
+    && passwd -u ansible\""
+  delegate_to: "{{ pve_primary_host_ip }}"
+  register: output
+  changed_when: output.rc == 0
+  failed_when: output.rc > 0 and not 'group \'ansible\' in use' in output.stderr
+  become: yes
+  tags:
+    - ansible_ssh
+
+- name: Create directory for the ssh
+  shell: "lxc exec {{ lxd_hostname }} -- /bin/sh -c \"su - ansible -c 'mkdir ~/.ssh && chmod 700 ~/.ssh '\""
+  delegate_to: "{{ pve_primary_host_ip }}"
+  become: yes
+  register: output
+  changed_when: output.rc == 0
+  failed_when: "'File exists' not in output.stderr and output.rc > 0"
+  tags:
+    - ansible_ssh
+
+- name: Add SSH key for ansible
+  shell: "lxc exec {{ lxd_hostname }} -- /bin/sh -c \"su - ansible -c 'touch ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && printf \\\"{{ lookup('pipe', 'cat ' + role_path + '/../../vault/awx.pub')}}\\\" > ~/.ssh/authorized_keys'\""
+  delegate_to: "{{ pve_primary_host_ip }}"
+  become: yes
+  register: output
+  changed_when: output.rc == 0
+  failed_when: "'File exists' not in output.stderr and output.rc > 0"
+  tags:
+    - ansible_ssh
+
+- name: Create visudo for Ansible
+  shell: "lxc exec {{ lxd_hostname }} -- /bin/sh -c \"if ! grep -q ansible /etc/sudoers; then echo 'ansible ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers ; fi;\""
+  delegate_to: "{{ pve_primary_host_ip }}"
+  become: yes
+  register: output
+  changed_when: output.rc == 0
+  failed_when: "'File exists' not in output.stderr and output.rc > 0"
+  tags:
+    - ansible_ssh

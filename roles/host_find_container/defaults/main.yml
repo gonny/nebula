@@ -1,0 +1,17 @@
+pve_primary_host: "{{ ( lxc_exists is defined and lxc_exists ) |
+  ternary (omit,
+  pct_host is defined |
+    ternary (pct_host, groups['host_cluster'] | random )) }}"
+
+pve_primary_host_ip: "{{ hostvars[pve_primary_host]['ansible_host'] | default ( omit ) }}"
+
+find_custom_hosts_only: false
+find_hosts: "{{ansible_play_batch + custom_hosts
+  if custom_hosts is defined and not find_custom_hosts_only
+  else custom_hosts
+    if find_custom_hosts_only
+    else ansible_play_batch}}"
+#pct_id: "{{ hostvars[ansible_hostname]['pct_id'] | default ( omit ) }}"
+
+# Z duvodu nemožnosti pouzivat promennou, přesunuto do set_fact mainu.
+#ansible_ssh_common_args: -o ProxyCommand="ssh -W %h:%p -q {{ ansible_user | default('ansible') }}@{{ pve_primary_host_ip if pve_primary_host_ip is defined else hostvars[pct_host].ansible_host }}"

@@ -1,43 +1,43 @@
 - name: Install necessary packages
-	apt:
-		name:
-			- zfsutils-linux
+  apt:
+    name:
+      - zfsutils-linux
 
 - name: Create zpool as container storage
-	shell: "zpool create -f -o failmode=continue -o ashift=12 {{ zpool_name }} {{ zpool_block_device | join (' ')}}"
-	become: yes
+  shell: "zpool create -f -o failmode=continue -o ashift=12 {{ zpool_name }} {{ zpool_block_device | join (' ')}}"
+  become: yes
 
 - name: Init lxd
-	shell: "lxd init --preseed {{ lookup ('template', 'lxd_preseed.j2')}}"
-	become: yes
+  shell: "lxd init --preseed {{ lookup ('template', 'lxd_preseed.j2')}}"
+  become: yes
 
 - name: Add ubuntu Minimal LXD repository with cloud-init enabled
-	shell: "lxc remote add --protocol simplestreams ubuntu-minimal https://cloud-images.ubuntu.com/minimal/releases/"
+  shell: "lxc remote add --protocol simplestreams ubuntu-minimal https://cloud-images.ubuntu.com/minimal/releases/"
 
 - name: Create container for lxdMosaic
-	import_role:
-		name: lxd_container_create
-	vars:
-		lxd_image: ubuntu-minimal:bionic
-		lxd_image_autoupdate: true
-		lxd_hostname: lxdMosaic
+  import_role:
+    name: lxd_container_create
+  vars:
+    lxd_image: ubuntu-minimal:bionic
+    lxd_image_autoupdate: true
+    lxd_hostname: lxdMosaic
 
 - name: Download installation source of mosaic into container
-	command: lxc exec lxdMosaic -- /bin/bash -c "curl -s https://raw.githubusercontent.com/turtle0x1/LxdMosaic/master/examples/install_with_clone.sh >> installLxdMosaic.sh && chmod +x installLxdMosaic.sh"
-	become: yes
+  command: lxc exec lxdMosaic -- /bin/bash -c "curl -s https://raw.githubusercontent.com/turtle0x1/LxdMosaic/master/examples/install_with_clone.sh >> installLxdMosaic.sh && chmod +x installLxdMosaic.sh"
+  become: yes
 
 - name: Install LXD mosaic
-	command: lxc exec lxdMosaic -t -- /root/installLxdMosaic.sh
-	register: output
+  command: lxc exec lxdMosaic -t -- /root/installLxdMosaic.sh
+  register: output
 
 - debug:
-		var: output
+    var: output
 
 - name: Open lxdMosaic to public IP
-	command: lxc config device add lxdMosaic  www proxy listen=tcp:0.0.0.0:8080 connect=tcp:127.0.0.1:443
+  command: lxc config device add lxdMosaic  www proxy listen=tcp:0.0.0.0:8080 connect=tcp:127.0.0.1:443
 
 - name: Open lxdMosaic to public IP
-	command: lxc config device add lxdMosaic www-api proxy listen=tcp:0.0.0.0:30000 connect=tcp:127.0.0.1:3000
+  command: lxc config device add lxdMosaic www-api proxy listen=tcp:0.0.0.0:30000 connect=tcp:127.0.0.1:3000
 
 #sudo lxc image copy  images:alpine/3.11 local: --alias alpine
 #lxc launch ubuntu-minimal:focal

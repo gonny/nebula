@@ -30,6 +30,7 @@ As much as possible work must be done from remote server with minimal human inte
 * [LXD/LXC instance and profile configuration](https://github.com/lxc/lxd/blob/master/doc/instances.md)
 * [Systemd interface custom DNS](https://blog.simos.info/how-to-use-lxd-container-hostnames-on-the-host-in-ubuntu-18-04/)
 * [LXD config settings](https://github.com/lxc/lxd/blob/master/doc/instances.md#type-unix-block)
+* [LXD API with authentication using CURL](https://stgraber.org/2016/04/18/lxd-api-direct-interaction/)
 
 # LXD lxc_custom_configuration
 ## What to test

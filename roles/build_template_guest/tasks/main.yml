@@ -1,0 +1,32 @@
+- name: Add Dummy guest to playbook and remap vars
+  add_host:
+    hostname: '{{ lxd_hostname }}'
+    groups:
+      - templates
+  tags:
+    - always
+
+- name: Find container and get information
+  include_role:
+    name: host_find_container
+  vars:
+    custom_hosts: "{{ groups['templates'] }}"
+    find_custom_hosts_only: true
+  tags:
+    - always
+
+- name: Set base facts to container
+  set_fact:
+    pve_primary_host_ip: "{{ hostvars[lxd_hostname]['pve_primary_host_ip'] }}"
+    lxc_exists: "{{ hostvars[lxd_hostname]['lxc_exists'] }}"
+  tags:
+    - always
+
+
+- name: Set advanced facts to container
+  set_fact:
+    ansible_host: "{{ hostvars[lxd_hostname]['ansible_host'] }}"
+    ansible_ssh_common_args: "{{ hostvars[lxd_hostname]['ansible_ssh_common_args'] }}"
+  when: lxc_exists
+  tags:
+    - always

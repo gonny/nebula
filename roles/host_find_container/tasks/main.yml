@@ -1,0 +1,79 @@
+- name:  Host Find Container | Find container among the cluster
+  shell: "lxc query /1.0/containers/{{ item.1 }}/state"
+  register: query_result
+  delegate_to: "{{ item.0 }}"
+  changed_when: "query_result.rc != 0"
+  failed_when: false
+  loop: "{{ groups['host_cluster'] | product(find_hosts) | list }}"
+  become: yes
+  run_once: true
+  tags:
+    - always
+
+- name: Host Find Container | Set LXD facts for the container
+  set_fact:
+    pve_primary_host: "{{ pve_primary_host }}"
+    pve_primary_host_ip: "{{ pve_primary_host_ip }}"
+    lxc_exists: false
+    cachable: yes
+  delegate_to: "{{ item }}"
+  delegate_facts: True
+  run_once: true
+  loop: "{{ find_hosts }}"
+  tags:
+    - always
+
+# Set IP address to the variable which will we use for delegate_to
+- name: Host Find Container | Update PVE facts based on findings
+  set_fact:
+    lxc_current_status: "{{ item.stdout | from_json }}"
+    pve_primary_host: "{{ item.item[0] }}"
+    lxc_exists: True
+    pve_primary_host_ip: "{{ hostvars[item.item[0]]['ansible_host'] }}"
+    ansible_ssh_common_args: -o ProxyCommand="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -W %h:%p -q {{ ansible_user | default('ansible') }}@{{ pve_primary_host_ip if pve_primary_host_ip is defined else hostvars[pct_host].ansible_host }}"
+    cachable: yes
+  when: not item.changed
+  delegate_to: "{{ item.item[1] }}"
+  delegate_facts: True
+  loop: "{{ query_result.results  }}"
+  run_once: true
+  tags:
+    - always
+
+# Set IP address to the variable which will we use for delegate_to
+- name: Host Find Container | Set container IP
+  set_fact:
+    ansible_host: "{{ hostvars[item.item[1]]['lxc_current_status'].network.eth0.addresses[0].address }}"
+    cachable: yes
+  when: not item.changed
+  delegate_to: "{{ item.item[1] }}"
+  delegate_facts: True
+  loop: "{{ query_result.results  }}"
+  run_once: true
+  tags:
+    - always
+
+
+# - name: Host Find Container | Update PVE facts based on findings
+#   set_fact:
+#     lxc_current_status: "{{ item.stdout | from_json }}"
+#     pve_primary_host: "{{ item.item[0] }}"
+#     lxc_exists: True
+#     pve_primary_host_ip: "{{ hostvars[item.item[0]]['ansible_host'] }}"
+#     ansible_ssh_common_args: -o ProxyCommand="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -W %h:%p -q {{ ansible_user | default('ansible') }}@{{ pve_primary_host_ip if pve_primary_host_ip is defined else hostvars[pct_host].ansible_host }}"
+#     cachable: yes
+#   when: not item.changed
+#   delegate_to: "{{ item.item[1] }}"
+#   delegate_facts: True
+#   loop: "{{ query_result.results  }}"
+#   run_once: true
+#   tags:
+#     - always
+
+# - name: Proxmox Find Container ADHOC | Set fact for bastion host
+#   set_fact:
+#     ansible_ssh_common_args: -o ProxyCommand="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -W %h:%p -q {{ ansible_user | default('ansible') }}@{{ pve_primary_host_ip if pve_primary_host_ip is defined else hostvars[pct_host].ansible_host }}"
+#     cachable: yes
+#   delegate_to: "{{ item }}"
+#   delegate_facts: True
+#   loop: "{{ find_hosts }}"

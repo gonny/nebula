@@ -1,4 +1,4 @@
 zpool_name: lxd-local
 zpool_block_device:
-	- /dev/sdb
+  - /dev/sdb
 lxc_network: 10.172.16.1/24

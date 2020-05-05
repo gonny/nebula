@@ -1,0 +1,5 @@
+- hosts: "localhost"
+  gather_facts: false
+  become: yes
+  roles:
+    - build_redis
