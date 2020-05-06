@@ -1,0 +1,13 @@
+- name: Create LXD profile
+  lxd_profile:
+    name: redisdb
+    description: Ansible managed Redis profile
+    state: present
+    config: {
+        "raw.lxc": "|-
+          lxc.init.uid=100
+          lxc.init.gid=101
+          lxc.init.cmd=/usr/bin/redis-server /etc/redis.conf
+          lxc.signal.halt=SIGTERM"
+    }
+  delegate_to: "{{ pve_primary_host_ip }}"

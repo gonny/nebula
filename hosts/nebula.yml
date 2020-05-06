@@ -4,7 +4,7 @@
 host_cluster
 
 [host_cluster]
-lxd_ubuntu20 ansible_host=192.168.5.135 ansible_become_password=Heslo123!!
+lxd-node01 ansible_host=192.168.5.135 ansible_become_password=Heslo123!!
 
 #[nebula_cluster]
 #nebula_lxd01 ansible_host=192.168.5.135 ansible_become_password=
@@ -14,4 +14,3 @@ redis
 
 [redis]
 redis01
-redis02

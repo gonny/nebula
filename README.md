@@ -11,7 +11,9 @@ As much as possible work must be done from remote server with minimal human inte
 .
 ## Pros
 ### LXC/LXD
-
++ No iptables
++ Network is managed by LXD itself
++ Do not add non-system users to the containers because we'll use different ( container ) approach
 ### GUI
 + It is written in PHP / NodeJS ( Angular )
 + It uses Web API of LXD

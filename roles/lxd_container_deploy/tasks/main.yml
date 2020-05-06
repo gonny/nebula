@@ -1,0 +1,45 @@
+- name: Check if image is present
+  shell: "lxc image ls --format=json | grep {{ lxd_image.split (':')[1] if lxd_image.split (':') | length > 1 else lxd_image }}"
+  register: image_status
+  changed_when: image_status.stdout == ""
+  failed_when: false
+  delegate_to: "{{ pve_primary_host_ip }}"
+  become: yes
+  when: not lxc_exists
+
+- name: Download image and set attributes
+  shell: "lxc image copy {{ lxd_image }} local: --auto-update={{ lxd_image_autoupdate }} --alias={{ lxd_image.split (':')[1] if lxd_image.split (':') | length > 1 else lxd_image }} --public=true"
+  delegate_to: "{{ pve_primary_host_ip }}"
+  when: image_status.changed and not lxc_exists
+  become: yes
+
+# - name: "Create container for {{ lxd_hostname | default ( inventory_hostname )}}"
+#   lxd_container:
+#     name: "{{ lxd_hostname | default ( inventory_hostname ) }}"
+#     state: started
+#     source:
+#       type: image
+#       mode: pull
+#       server: "https://{{ pve_primary_host }}:8443"
+#       protocol: lxd
+#       alias: "{{ lxd_image.split (':')[1] if lxd_image.split (':') | length > 1 else lxd_image }}"
+#     profiles: ["default"]
+# #    wait_for_ipv4_addresses: true
+#     timeout: 600
+#   delegate_to: "{{ pve_primary_host_ip }}"
+#   when: not lxc_exists
+
+- name: "Create container for {{ lxd_hostname | default ( inventory_hostname )}}"
+  shell: "lxc launch {{ lxd_image.split (':')[1] if lxd_image.split (':') | length > 1 else lxd_image }} {{ lxd_hostname | default ( inventory_hostname ) }} --ephemeral={{ lxd_ephemeral }}"
+  register: response
+  delegate_to: "{{ pve_primary_host_ip }}"
+  become: yes
+  when: not lxc_exists
+
+# - name: 'Wait for container create'
+#   async_status:
+#     jid: "{{ response.ansible_job_id }}"
+#   register: job_result
+#   until: job_result.finished
+#   retries: 10
+#   delegate_to: "{{ pve_primary_host_ip }}"

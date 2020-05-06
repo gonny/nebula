@@ -24,9 +24,9 @@
     - always
 
 # Set IP address to the variable which will we use for delegate_to
-- name: Host Find Container | Update PVE facts based on findings
+- name: Host Find Container | Update Guest facts based on findings
   set_fact:
-    lxc_current_status: "{{ item.stdout | from_json }}"
+    lxc_query: "{{ item.stdout | from_json }}"
     pve_primary_host: "{{ item.item[0] }}"
     lxc_exists: True
     pve_primary_host_ip: "{{ hostvars[item.item[0]]['ansible_host'] }}"
@@ -40,10 +40,19 @@
   tags:
     - always
 
+- debug:
+    var: hostvars[item.item[1]]
+  loop: "{{ query_result.results  }}"
+
 # Set IP address to the variable which will we use for delegate_to
 - name: Host Find Container | Set container IP
   set_fact:
-    ansible_host: "{{ hostvars[item.item[1]]['lxc_current_status'].network.eth0.addresses[0].address }}"
+    ansible_host: "{{
+      hostvars[item.item[1]]['lxc_query'].network.eth0.addresses[0].address
+      if 'Running' in hostvars[item.item[1]]['lxc_query']['status']
+      else omit
+    }}"
+    lxc_state:  "{{ hostvars[item.item[1]]['lxc_query']['status'] }}"
     cachable: yes
   when: not item.changed
   delegate_to: "{{ item.item[1] }}"
@@ -56,7 +65,7 @@
 
 # - name: Host Find Container | Update PVE facts based on findings
 #   set_fact:
-#     lxc_current_status: "{{ item.stdout | from_json }}"
+#     lxc_query: "{{ item.stdout | from_json }}"
 #     pve_primary_host: "{{ item.item[0] }}"
 #     lxc_exists: True
 #     pve_primary_host_ip: "{{ hostvars[item.item[0]]['ansible_host'] }}"
