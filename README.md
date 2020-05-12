@@ -33,6 +33,7 @@ As much as possible work must be done from remote server with minimal human inte
 * [Systemd interface custom DNS](https://blog.simos.info/how-to-use-lxd-container-hostnames-on-the-host-in-ubuntu-18-04/)
 * [LXD config settings](https://github.com/lxc/lxd/blob/master/doc/instances.md#type-unix-block)
 * [LXD API with authentication using CURL](https://stgraber.org/2016/04/18/lxd-api-direct-interaction/)
+* [VXLAN Unicast overlay](https://lxadm.com/Unicast_VXLAN:_overlay_network_for_multiple_servers_with_dozens_of_containers)
 
 # LXD lxc_custom_configuration
 ## What to test
@@ -42,3 +43,25 @@ As much as possible work must be done from remote server with minimal human inte
 # ~~nebula~~
 ~~OpenNebula deployment inside internal environment~~
 * It seems that openNebula is not for our needs. OpenNebula is great tool for managing VM ( KVM ) instances and LXD implementation is done using opennebula LXD package which must be installed on host.
+
+```
+printf 'lxc.init.cmd = /docker-entrypoint.sh /usr/local/bin/redis-server /data/redis.conf\nlxc.signal.halt=SIGTERM\nlxc.init.uid=999'| lxc config set redisdb-build  raw.lxc - ; lxc stop redisdb-build --force
+~ # cat /docker-entrypoint.sh
+#!/bin/sh
+set -e
+
+# first arg is `-f` or `--some-option`
+# or first arg is `something.conf`
+if [ "${1#-}" != "$1" ] || [ "${1%.conf}" != "$1" ]; then
+	set -- redis-server "$@"
+fi
+
+# allow the container to be started with `--user`
+if [ "$1" = 'redis-server' -a "$(id -u)" = '0' ]; then
+	find . \! -user redis -exec chown redis '{}' +
+	exec su-exec redis "$0" "$@"
+fi
+
+exec "$@"
+```
+*rc-update del crond

@@ -8,6 +8,7 @@ local_users_default:
     groups:
       - automation
       - users
+      - lxd
 
   "gitlab":
     ssh_key: "{{ vault_path }}/gitlab.pub"
@@ -20,11 +21,15 @@ local_users_default:
       groups:
         - users
         - operations
+        - lxd
+
   "lukas.hampeis":
     ssh_key: "{{ vault_path }}/lukas_hampeis.pub"
     groups:
       - users
       - operations
+      - lxd
+
   "martin.vaner":
     ssh_key: "{{ vault_path }}/martin_vaner.pub"
     groups:
