@@ -1,8 +1,0 @@
-- hosts: "nebula_cluster"
-  gather_facts: false
-  become: yes
-  become_method: sudo
-  vars:
-    kvm: false
-  roles:
-    - lxd_nebula_host

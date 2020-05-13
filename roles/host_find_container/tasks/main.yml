@@ -1,5 +1,19 @@
+- name: Host Find Container | Set LXD Base facts
+  set_fact:
+    pve_primary_host: "{{ pve_primary_host }}"
+    pve_primary_host_ip: "{{ pve_primary_host_ip }}"
+    lxc_exists: false
+    lxd_hostname: "{{ (hostvars[item]['lxd_hostname'] | default ( hostvars[item]['inventory_hostname'])) | regex_replace('[\\._:]+','-') }}"
+    cachable: yes
+  delegate_to: "{{ item }}"
+  delegate_facts: True
+  run_once: true
+  loop: "{{ find_hosts }}"
+  tags:
+    - always
+
 - name:  Host Find Container | Find container among the cluster
-  shell: "lxc query /1.0/containers/{{ item.1 }}/state"
+  shell: "lxc query /1.0/containers/{{ hostvars[item.1]['lxd_hostname'] }}/state"
   register: query_result
   delegate_to: "{{ item.0 }}"
   changed_when: "query_result.rc != 0"
@@ -7,19 +21,6 @@
   loop: "{{ groups['host_cluster'] | product(find_hosts) | list }}"
   become: yes
   run_once: true
-  tags:
-    - always
-
-- name: Host Find Container | Set LXD facts for the container
-  set_fact:
-    pve_primary_host: "{{ pve_primary_host }}"
-    pve_primary_host_ip: "{{ pve_primary_host_ip }}"
-    lxc_exists: false
-    cachable: yes
-  delegate_to: "{{ item }}"
-  delegate_facts: True
-  run_once: true
-  loop: "{{ find_hosts }}"
   tags:
     - always
 

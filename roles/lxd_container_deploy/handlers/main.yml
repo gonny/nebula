@@ -1,0 +1,4 @@
+- name: launch container
+  command: "lxc start {{ lxd_hostname | default ( inventory_hostname ) }}"
+  delegate_to: "{{ pve_primary_host_ip }}"
+  become: true

@@ -11,3 +11,5 @@
           lxc.signal.halt=SIGTERM"
     }
   delegate_to: "{{ pve_primary_host_ip }}"
+
+  # lxc config device add redis01-lxd redis-conf disk source=/lxd-data/redis01-lxd/redis.conf path=/etc/redis.conf

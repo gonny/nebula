@@ -30,11 +30,12 @@
 #   when: not lxc_exists
 
 - name: "Create container for {{ lxd_hostname | default ( inventory_hostname )}}"
-  shell: "lxc launch {{ lxd_image.split (':')[1] if lxd_image.split (':') | length > 1 else lxd_image }} {{ lxd_hostname | default ( inventory_hostname ) }} --ephemeral={{ lxd_ephemeral }}"
+  shell: "lxc init {{ lxd_image.split (':')[1] if lxd_image.split (':') | length > 1 else lxd_image }} {{ lxd_hostname }} --ephemeral={{ lxd_ephemeral }}"
   register: response
   delegate_to: "{{ pve_primary_host_ip }}"
   become: yes
   when: not lxc_exists
+  notify: launch container
 
 # - name: 'Wait for container create'
 #   async_status:
