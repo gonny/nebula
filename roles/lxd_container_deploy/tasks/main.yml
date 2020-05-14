@@ -30,17 +30,14 @@
 #   when: not lxc_exists
 
 - name: "Create container for {{ lxd_hostname | default ( inventory_hostname )}}"
-  shell: "lxc init {{ lxd_image.split (':')[1] if lxd_image.split (':') | length > 1 else lxd_image }} {{ lxd_hostname }} --ephemeral={{ lxd_ephemeral }}"
+  shell: "lxc init {{ lxd_image.split (':')[1] if lxd_image.split (':') | length > 1 else lxd_image }} {{ lxd_hostname }} --ephemeral={{ lxd_ephemeral }} -p {{ profiles | join('-p ')}}"
   register: response
   delegate_to: "{{ pve_primary_host_ip }}"
   become: yes
   when: not lxc_exists
   notify: launch container
 
-# - name: 'Wait for container create'
-#   async_status:
-#     jid: "{{ response.ansible_job_id }}"
-#   register: job_result
-#   until: job_result.finished
-#   retries: 10
-#   delegate_to: "{{ pve_primary_host_ip }}"
+- name: Refresh container information
+  include_role:
+    name: host_find_container
+  when: build

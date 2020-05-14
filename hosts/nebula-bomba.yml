@@ -4,9 +4,9 @@
 host_cluster
 
 [host_cluster]
-lxd-node01 ansible_host=10.175.10.219 ansible_become_password=nebula
-lxd-node02 ansible_host=10.175.10.220 ansible_become_password=nebula
-lxd-node03 ansible_host=10.175.10.221 ansible_become_password=nebula
+lxd-node01 ansible_host=10.175.10.230 ansible_become_password=nebula
+lxd-node02 ansible_host=10.175.10.229 ansible_become_password=nebula
+lxd-node03 ansible_host=10.175.10.219 ansible_become_password=nebula
 lxd-node04 ansible_host=10.175.10.223 ansible_become_password=nebula
 
 #[nebula_cluster]
@@ -16,4 +16,5 @@ lxd-node04 ansible_host=10.175.10.223 ansible_become_password=nebula
 redis
 
 [redis]
-redis01
+redis01 pct_host=lxd-node03
+redis02 pct_host=lxd-node03

@@ -1,5 +1,7 @@
 lxd_image: "images:alpine/3.11"
 lxd_image_autoupdate: false
 lxd_ephemeral: false
-lxc_exists: false
+build: false
+profiles:
+  - default
 #lxd_image_alias:

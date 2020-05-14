@@ -1,0 +1,9 @@
+- hosts: "redis"
+  gather_facts: false
+  become: yes
+  vars:
+    build: true
+  roles:
+    - host_find_container
+    - lxd_container_deploy
+    - redis_build

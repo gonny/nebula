@@ -1,16 +1,3 @@
-- name: Import dummy host variables
-  import_role:
-    name: build_template_guest
-
-- name: Create build container
-  include_role:
-    name: lxd_container_create
-  when: not lxc_exists
-
-- name: Refresh information about the guest
-  import_role:
-    name: build_template_guest
-
 - name: Install SSH and import ansible key
   import_tasks:
     file: "{{ role_path }}/../build_template_guest/tasks/ansible_ssh.yml"
@@ -24,7 +11,7 @@
     gid: 1000
     system: yes
   become: yes
-  delegate_to: "{{ lxd_hostname }}"
+#  delegate_to: "{{ lxd_hostname }}"
 
 
 - name: Create Redis user
@@ -34,7 +21,7 @@
     group: redis
     system: yes
   become: yes
-  delegate_to: "{{ lxd_hostname }}"
+#  delegate_to: "{{ lxd_hostname }}"
 
 # - name: Add redis user and group
 #   shell: "lxc exec {{ lxd_hostname }} -- /bin/sh -c \"addgroup -S -g 1000 redis && adduser -S -G redis -u 999 redis\""
