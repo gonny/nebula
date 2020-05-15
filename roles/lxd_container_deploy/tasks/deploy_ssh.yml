@@ -1,0 +1,94 @@
+- name: deploy_ssh | Start container
+  import_tasks:
+    file: container_start.yml
+  when: "not lxc_exists or 'Stopped' in lxc_query['status']"
+  tags:
+    - ansible_ssh
+    - container_deploy
+
+# We need IP addres to access the container via SSH
+- name: deploy_ssh | Get fresh information and fact about the container
+  import_tasks:
+    file: "{{ role_path }}/../host_find_container/tasks/update_container_information.yml"
+  when: not lxc_exists
+  tags:
+    - ansible_ssh
+
+# This is the case when the container will use other SSH Port other than 22
+# https://dmsimard.com/2016/03/15/changing-the-ssh-port-with-ansible
+- name: deploy_ssh | Check if started container is ready listening port 22
+  wait_for:
+    host: "{{ ansible_host }}"
+    port: 22
+    timeout: 3
+    state: started
+  register: container_ssh
+  changed_when: "container_ssh.msg is defined and 'Timeout' in container_ssh.msg"
+  failed_when: false
+  delegate_to: "{{ pve_primary_host_ip }}"
+#  when: "('started') in lxc_state and not 'running' in lxc_current_status"
+  tags:
+    - ansible_ssh
+
+- debug:
+    var: container_ssh
+# We can set facts for connection here
+# - name: deploy_ssh | Set connection facts
+#   set_fact:
+#     connection: ssh
+
+- name: deploy_ssh | Install sudo and ssh server
+  shell: "lxc exec {{ lxd_hostname }} -- /bin/sh -c \"apk add openssh-server sudo python3 openssh-client && service sshd start\""
+  delegate_to: "{{ pve_primary_host_ip }}"
+  register: output
+  changed_when: "not 'sshd has already been started' in output.stderr"
+  when: container_ssh.changed
+  become: yes
+  tags:
+    - ansible_ssh
+
+- name: deploy_ssh | Add Ansible user and group to the container
+  shell: "lxc exec {{ lxd_hostname }} -- /bin/sh -c \"addgroup -S -g 8000 {{ ansible_user | default('ansible')}} \
+    && adduser -u 8000 -s /bin/sh -G ansible -D -h /home/ansible ansible \
+    && passwd -u ansible\""
+  delegate_to: "{{ pve_primary_host_ip }}"
+  register: output
+  changed_when: output.rc == 0
+  failed_when: output.rc > 0 and not 'group \'ansible\' in use' in output.stderr
+  become: yes
+  when: container_ssh.changed
+  tags:
+    - ansible_ssh
+
+- name: deploy_ssh | Create directory for the ssh
+  shell: "lxc exec {{ lxd_hostname }} -- /bin/sh -c \"su - ansible -c 'mkdir ~/.ssh && chmod 700 ~/.ssh '\""
+  delegate_to: "{{ pve_primary_host_ip }}"
+  become: yes
+  register: output
+  changed_when: output.rc == 0
+  failed_when: "'File exists' not in output.stderr and output.rc > 0"
+  when: container_ssh.changed
+  tags:
+    - ansible_ssh
+
+- name: deploy_ssh | Add SSH key for ansible
+  shell: "lxc exec {{ lxd_hostname }} -- /bin/sh -c \"su - ansible -c 'touch ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && printf \\\"{{ lookup('pipe', 'cat ' + role_path + '/../../vault/'+ ansible_user | default('ansible') +'.pub')}}\\\" > ~/.ssh/authorized_keys'\""
+  delegate_to: "{{ pve_primary_host_ip }}"
+  become: yes
+  register: output
+  changed_when: output.rc == 0
+  failed_when: "'File exists' not in output.stderr and output.rc > 0"
+  when: container_ssh.changed
+  tags:
+    - ansible_ssh
+
+- name: deploy_ssh | Create visudo for Ansible
+  shell: "lxc exec {{ lxd_hostname }} -- /bin/sh -c \"if ! grep -q ansible /etc/sudoers; then echo 'ansible ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers ; fi;\""
+  delegate_to: "{{ pve_primary_host_ip }}"
+  become: yes
+  register: output
+  changed_when: output.rc == 0
+  failed_when: "'File exists' not in output.stderr and output.rc > 0"
+  when: container_ssh.changed
+  tags:
+    - ansible_ssh

@@ -1,6 +1,9 @@
-- name: launch container
+#Snippet for container start
+- name: Launch container
   command: "lxc start {{ lxd_hostname | default ( inventory_hostname ) }}"
   delegate_to: "{{ pve_primary_host_ip }}"
+  become: true
   register: result
   failed_when: "'The container is already running' not in result.stderr and result.rc > 0"
-  become: true
+  tags:
+    - ansible_ssh

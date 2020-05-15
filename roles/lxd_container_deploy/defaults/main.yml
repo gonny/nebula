@@ -2,6 +2,7 @@ lxd_image: "images:alpine/3.11"
 lxd_image_autoupdate: false
 lxd_ephemeral: false
 build: false
+lxd_deploy_ssh: false
 profiles:
   - default
 #lxd_image_alias:

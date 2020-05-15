@@ -1,6 +1,3 @@
-- name: Install SSH and import ansible key
-  import_tasks:
-    file: "{{ role_path }}/../build_template_guest/tasks/ansible_ssh.yml"
 
 # - setup:
 #   become: yes
@@ -11,8 +8,6 @@
     gid: 1000
     system: yes
   become: yes
-#  delegate_to: "{{ lxd_hostname }}"
-
 
 - name: Create Redis user
   user:
@@ -21,7 +16,14 @@
     group: redis
     system: yes
   become: yes
-#  delegate_to: "{{ lxd_hostname }}"
+
+- name: Set PHP ini file
+  template:
+    src: mw-fpm-tester.j2
+    dest: /tmp/php.ini
+  register: php_ini
+  #notify: Restart PHP-FPM
+  become: yes
 
 # - name: Add redis user and group
 #   shell: "lxc exec {{ lxd_hostname }} -- /bin/sh -c \"addgroup -S -g 1000 redis && adduser -S -G redis -u 999 redis\""
@@ -33,28 +35,28 @@
 #   delegate_to: "{{ pve_primary_host_ip }}"
 #   become: yes
 
-- name: Set container environment
-  shell: "lxc config set {{ lxd_hostname }} environment.{{ item }}"
-  become: yes
-  delegate_to: "{{ pve_primary_host_ip }}"
-  loop:
-    - "REDIS_VERSION=6.0.1"
-    - "REDIS_DOWNLOAD_URL=http://download.redis.io/releases/redis-6.0.1.tar.gz"
-    - "REDIS_DOWNLOAD_SHA=b8756e430479edc162ba9c44dc89ac394316cd482f2dc6b91bcd5fe12593f273"
-
-- name: Install packages for build
-  package:
-    name:
-      - ".build-deps"
-      - coreutils
-      - gcc
-      - linux-headers
-      - make
-      - musl-dev
-      - openssl-dev
-    state: present
-    use: apk
-  delegate_to: "{{ lxd_hostname }}"
+# - name: Set container environment
+#   shell: "lxc config set {{ lxd_hostname }} environment.{{ item }}"
+#   become: yes
+#   delegate_to: "{{ pve_primary_host_ip }}"
+#   loop:
+#     - "REDIS_VERSION=6.0.1"
+#     - "REDIS_DOWNLOAD_URL=http://download.redis.io/releases/redis-6.0.1.tar.gz"
+#     - "REDIS_DOWNLOAD_SHA=b8756e430479edc162ba9c44dc89ac394316cd482f2dc6b91bcd5fe12593f273"
+#
+# - name: Install packages for build
+#   package:
+#     name:
+#       - ".build-deps"
+#       - coreutils
+#       - gcc
+#       - linux-headers
+#       - make
+#       - musl-dev
+#       - openssl-dev
+#     state: present
+#     use: apk
+#   delegate_to: "{{ lxd_hostname }}"
 
 # sudo lxc exec redisdb-build -- /bin/sh -c set -eux; apk add --no-cache --virtual .build-deps  coreutils gcc linux-headers  make  musl-dev  openssl-dev;   wget -O redis.tar.gz "$REDIS_DOWNLOAD_URL";  echo "$REDIS_DOWNLOAD_SHA *redis.tar.gz" | sha256sum -c -;  mkdir -p /usr/src/redis;tar -xzf redis.tar.gz -C /usr/src/redis --strip-components=1;rm redis.tar.gz;grep -E '^ *createBoolConfig[(]"protected-mode",.*, *1 *,.*[)],$' /usr/src/redis/src/config.c;  sed -ri 's!^( *createBoolConfig[(]"protected-mode",.*, *)1( *,.*[)],)$!\10\2!' /usr/src/redis/src/config.c;     grep -E '^ *createBoolConfig[(]"protected-mode",.*, *0 *,.*[)],$' /usr/src/redis/src/config.c;export BUILD_TLS=yes;   make -C /usr/src/redis -j "$(nproc)" all;   make -C /usr/src/redis install;
 #

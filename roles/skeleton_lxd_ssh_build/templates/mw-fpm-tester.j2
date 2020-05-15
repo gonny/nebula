@@ -1,0 +1,14 @@
+import requests
+import os
+import time
+
+
+def url_ok(url):
+    r = requests.get(url)
+    return r.status_code == 200
+
+	print time.ctime() + ": Not OK, restarting FPM"
+	os.system('systemctl restart php7.2-fpm');
+
+else:
+	print time.ctime() + ": OK"

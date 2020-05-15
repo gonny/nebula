@@ -4,8 +4,8 @@
       - zfsutils-linux
       # becuase of vxlan over unicast
       # https://lxadm.com/Unicast_VXLAN:_overlay_network_for_multiple_servers_with_dozens_of_containers
-      - bridge-utils
-      - ebtables
+      # - bridge-utils
+      # - ebtables
 
 
 - name: Proxmox Setup | Gather facts about zfs

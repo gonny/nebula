@@ -1,6 +1,0 @@
-- hosts: "nebula_gui"
-  gather_facts: false
-  become: yes
-  become_method: sudo
-  roles:
-    - lxd_nebula_gui

@@ -1,0 +1,33 @@
+- name: update_container_information | Query host for information
+  shell: "lxc query /1.0/containers/{{ lxd_hostname }}/state"
+  register: query_result
+  delegate_to: "{{ pve_primary_host_ip }}"
+  changed_when: "query_result.rc != 0"
+  failed_when: false
+  become: yes
+  tags:
+    - always
+
+- name: Update facts
+  set_fact:
+    #lxc_exists: true
+    lxc_query: "{{ query_result.stdout | from_json }}"
+#    lxc_exists: "true"
+    ansible_ssh_common_args: -o ProxyCommand="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -W %h:%p -q {{ ansible_user | default('ansible') }}@{{ pve_primary_host_ip if pve_primary_host_ip is defined else hostvars[pct_host].ansible_host }}"
+    cachable: yes
+  when: not query_result.changed
+
+# Set IP address to the variable which will we use for delegate_to
+- name: update_container_information | Set container IP if exists
+  set_fact:
+    lxc_state:  "{{ lxc_query['status'] }}"
+    ansible_host: "{{
+      lxc_query.network.eth0.addresses[0].address
+      if 'Running' in lxc_query['status'] and lxc_query.network.eth0 is defined
+      else none
+    }}"
+    lxc_exists: true
+    cachable: yes
+  when: not query_result.changed
+  tags:
+    - always

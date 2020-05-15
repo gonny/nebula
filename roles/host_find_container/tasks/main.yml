@@ -1,6 +1,3 @@
-- name: Flush handlers
-  meta: flush_handlers
-
 - name: Host Find Container | Set LXD Base facts
   set_fact:
     pve_primary_host: "{{ pve_primary_host }}"
@@ -16,30 +13,28 @@
   tags:
     - always
 
+# TODO: Rewrite based on API - connect to one host only and search via API - maybe faster? - Maybe Only API?
 - name:  Host Find Container | Find container among the cluster
   shell: "lxc query /1.0/containers/{{ hostvars[item.1]['lxd_hostname'] }}/state"
   register: query_result
-  delegate_to: "{{ item.0 if not hostvars[item.1]['lxc_exists']
-    else hostvars[item.1]['pve_primary_host']
-      if hostvars[item.1]['pve_primary_host'] == item.0
-      else  pve_primary_host }}"
+  delegate_to: "{{ item.0 }}"
   changed_when: "query_result.rc != 0"
   failed_when: false
   loop: "{{ groups['host_cluster'] | product(find_hosts) | list }}"
   become: yes
   run_once: true
-  when: not hostvars[item.1]['lxc_exists']
+  when: not hostvars[item.1]['lxc_exists'] or not lxc_exists
   tags:
     - always
 
 # Set IP address to the variable which will we use for delegate_to
 - name: Host Find Container | Update Guest facts based on findings
   set_fact:
-    lxc_query: "{{ item.stdout | from_json if hostvars[item.item[1]]['lxc_query'] is not defined else hostvars[item.item[1]]['lxc_query'] }}"
+    lxc_query: "{{ item.stdout | from_json }}"
     pve_primary_host: "{{ item.item[0] }}"
     lxc_exists: True
-    pve_primary_host_ip: "{{ hostvars[item.item[0]]['ansible_host'] }}"
     ansible_ssh_common_args: -o ProxyCommand="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -W %h:%p -q {{ ansible_user | default('ansible') }}@{{ pve_primary_host_ip if pve_primary_host_ip is defined else hostvars[pct_host].ansible_host }}"
+    pve_primary_host_ip: "{{ hostvars[item.item[0]]['ansible_host'] }}"
     cachable: yes
   when: not item.changed
   delegate_to: "{{ item.item[1] }}"
@@ -49,19 +44,19 @@
   tags:
     - always
 
-- debug:
-    var: hostvars[item.item[1]]
-  loop: "{{ query_result.results  }}"
+# - debug:
+#     var: hostvars[item.item[0]]
+#   loop: "{{ query_result.results  }}"
 
 # Set IP address to the variable which will we use for delegate_to
 - name: Host Find Container | Set container IP
   set_fact:
+    lxc_state:  "{{ hostvars[item.item[1]]['lxc_query']['status'] }}"
     ansible_host: "{{
       hostvars[item.item[1]]['lxc_query'].network.eth0.addresses[0].address
       if 'Running' in hostvars[item.item[1]]['lxc_query']['status']
-      else omit
+      else none
     }}"
-    lxc_state:  "{{ hostvars[item.item[1]]['lxc_query']['status'] }}"
     cachable: yes
   when: not item.changed
   delegate_to: "{{ item.item[1] }}"

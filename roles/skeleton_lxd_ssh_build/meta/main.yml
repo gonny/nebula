@@ -1,0 +1,10 @@
+dependencies:
+- role: host_find_container
+  tags:
+    - always
+
+- role: lxd_container_deploy
+  vars:
+    lxd_deploy_ssh: true
+  tags:
+    - lxd_container_deploy

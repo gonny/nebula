@@ -1,0 +1,16 @@
+- hosts: "redis"
+  gather_facts: false
+  become: yes
+  roles:
+  - host_find_container
+  - role: lxd_container_deploy
+    vars:
+      lxd_deploy_ssh: true
+
+  # tasks:
+  # - import_role:
+  #     name: host_find_container
+  # - import_role:
+  #     name: lxd_container_deploy
+  #   vars:
+  #     lxd_deploy_ssh: true
